@@ -9,6 +9,7 @@ from aiogram.types import (
 from config import settings
 from settings import PHONE, ADDRESS, HOURS, INFO, CONTACTS
 from services import SERVICES, PRICES
+from faq import FAQ
 
 
 def menu_kb() -> InlineKeyboardMarkup:
@@ -20,6 +21,7 @@ def menu_kb() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="📞 Контакты", callback_data="contacts"),
         ],
         [InlineKeyboardButton(text="📝 Записаться", callback_data="booking")],
+        [InlineKeyboardButton(text="❓ Частые вопросы", callback_data="faq")],
     ])
 
 
@@ -79,6 +81,49 @@ async def show_booking(cb: CallbackQuery):
             [InlineKeyboardButton(text="🌐 Наш сайт", url="https://volvo7.ru/")],
             [InlineKeyboardButton(text="⬅️ Меню", callback_data="menu")],
         ]),
+    )
+    await cb.answer()
+
+
+def faq_cats_kb() -> InlineKeyboardMarkup:
+    rows = [
+        [InlineKeyboardButton(text=title, callback_data=cb)]
+        for cb, (title, _) in FAQ.items()
+    ]
+    rows.append([InlineKeyboardButton(text="⬅️ Меню", callback_data="menu")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def faq_questions_kb(cat: str) -> InlineKeyboardMarkup:
+    rows = [
+        [InlineKeyboardButton(text=q, callback_data=f"{cat}:{i}")]
+        for i, (q, _) in enumerate(FAQ[cat][1])
+    ]
+    rows.append([InlineKeyboardButton(text="⬅️ Категории", callback_data="faq")])
+    rows.append([InlineKeyboardButton(text="⬅️ Меню", callback_data="menu")])
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+@dp.callback_query(F.data == "faq")
+async def show_faq(cb: CallbackQuery):
+    await cb.message.answer(
+        "❓ *Частые вопросы*\nВыберите категорию:",
+        parse_mode="Markdown",
+        reply_markup=faq_cats_kb(),
+    )
+    await cb.answer()
+
+
+@dp.callback_query(F.data.startswith("faq_prices")
+                   | F.data.startswith("faq_service")
+                   | F.data.startswith("faq_visit"))
+async def show_faq_answer(cb: CallbackQuery):
+    cat, idx = cb.data.rsplit(":", 1)
+    q, a = FAQ[cat][1][int(idx)]
+    await cb.message.answer(
+        f"*{q}*\n\n{a}",
+        parse_mode="Markdown",
+        reply_markup=faq_questions_kb(cat),
     )
     await cb.answer()
 
